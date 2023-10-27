@@ -1,40 +1,67 @@
-import React, { useState, useEffect } from 'react';
-import { Container, Button } from 'react-bootstrap';
+import React, { useState, useEffect } from "react";
+import { Container, Button } from "react-bootstrap";
+import Loader from "../layouts/loader";
+import socketIO from "socket.io-client";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faVideoCamera,
+  faMicrophone,
+  faUserPlus,
+  faPaperPlane
+} from "@fortawesome/free-solid-svg-icons";
+import { Peer } from "peerjs";
+const socket = socketIO.connect("http://localhost:9000");
+
 
 const Home = () => {
-  const [localStream, setLocalStream] = useState(null);
-  const [remoteStream, setRemoteStream] = useState(null);
-
-  useEffect(() => {
-    // Set up local video stream
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-      .then((stream) => {
-        setLocalStream(stream);
-      })
-      .catch((error) => {
-        console.error('Error accessing media devices:', error);
-      });
-
-    // Create peer connection and set up event handlers (not shown in this template)
-  }, []);
-
-  const startCall = () => {
-    // Implement logic to start a video call
-  };
-
-  const endCall = () => {
-    // Implement logic to end the video call
-  };
+ 
 
   return (
-    <Container className="mt-5">
-      <video ref={(video) => { if (video) video.srcObject = localStream; }} autoPlay muted />
-      {remoteStream && <video ref={(video) => { if (video) video.srcObject = remoteStream; }} autoPlay />}
-      <div className="mt-3">
-        <Button variant="success" onClick={startCall}>Start Call</Button>
-        <Button variant="danger" className="ml-2" onClick={endCall}>End Call</Button>
+    <div>
+      <div className="header">
+        <div className="logo">
+          <h3>Video Chat</h3>
+        </div>
       </div>
-    </Container>
+      <div className="main">
+        <div className="main__left">
+          <div className="videos__group">
+            <div id="video-grid"></div>
+          </div>
+          <div className="options">
+            <div className="options__left">
+              <div id="stopVideo" className="options__button">
+                <FontAwesomeIcon icon={faVideoCamera} />
+              </div>
+              <div id="muteButton" className="options__button">
+                <FontAwesomeIcon icon={faMicrophone} />
+              </div>
+            </div>
+            <div className="options__right">
+              <div id="inviteButton" className="options__button">
+                <FontAwesomeIcon icon={faUserPlus} />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="main__right">
+          <div className="main__chat_window">
+            <div className="messages"></div>
+          </div>
+          <div className="main__message_container">
+            <input
+              id="chat_message"
+              type="text"
+              autoComplete="off"
+              placeholder="Type message here..."
+            />
+            <div id="send" className="options__button">
+              <FontAwesomeIcon icon={faPaperPlane} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

@@ -13,50 +13,51 @@ const http = require("http").Server(app);
 app.use(helmet());
 // Set up helmet with CSP policy
 app.use(
-    helmet.contentSecurityPolicy({
-      directives: {
-        defaultSrc: ["'self'"],
-        connectSrc: ["'self'", "http://localhost:9000"],
-      },
-    })
-  );
+  helmet.contentSecurityPolicy({
+    directives: {
+      defaultSrc: ["'self'"],
+      connectSrc: ["'self'", "http://localhost:9000"],
+    },
+  })
+);
 app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // socket io
-const socketIO = require("socket.io")(http, {
-    cors: {
-        origin: "http://localhost:5173",
-    },
+const io = require("socket.io")(http, {
+  cors: {
+    origin: "http://localhost:5173",
+  },
 });
 
+const { ExpressPeerServer } = require("peer");
+const opinions = {
+  debug: true,
+};
 
+app.use("/peerjs", ExpressPeerServer(http, opinions));
 
-socketIO.on("connection", (socket) => {
-    console.log(`⚡: ${socket.id} user just connected!`);
-    socket.on("message", (data) => {
-        console.log(data);
-        socketIO.emit("messageResponse", data);
+io.on("connection", (socket) => {
+  socket.on("join-room", (roomId, userId, userName) => {
+    socket.join(roomId);
+    setTimeout(() => {
+      socket.to(roomId).broadcast.emit("user-connected", userId);
+    }, 1000);
+    socket.on("message", (message) => {
+      io.to(roomId).emit("createMessage", message, userName);
     });
-
-    socket.on("disconnect", () => {
-        console.log("🔥: A user disconnected");
-    });
+  });
 });
 
+// import all routes
+const user = require("./routes/userRoutes");
 
-
-// // import all routes
-// const user = require("./routes/userRoute");
-
-// app.use("/api/v1", user);
-
+app.use("/api/v1", user);
 
 // error middleware
 app.use(errorMiddleware);
-
 
 // config.env file
 dotenv.config();
@@ -67,11 +68,5 @@ connectDatabase();
 const port = process.env.PORT || 9000;
 
 http.listen(port, () => {
-    console.log(`Server listening on port ${port}`);
+  console.log(`Server listening on port ${port}`);
 });
-
-
-
-
-
-
