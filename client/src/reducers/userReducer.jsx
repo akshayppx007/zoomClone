@@ -127,7 +127,7 @@ export const userListReducer = (state = { users: [] }, action) => {
   }
 };
 
-export const userUpdateReducer = (state = {}, action) => {
+export const userUpdateReducer = (state = {user: {}}, action) => {
   switch (action.type) {
     case UPDATE_PROFILE_REQUEST:
       return {
@@ -136,11 +136,13 @@ export const userUpdateReducer = (state = {}, action) => {
     case UPDATE_PROFILE_SUCCESS:
       return {
         loading: false,
+        user: action.payload.user,
         isUpdated: action.payload.success,
       };
     case UPDATE_PROFILE_FAILURE:
       return {
         loading: false,
+        user: null,
         error: action.payload,
       };
     case UPDATE_PROFILE_RESET:

@@ -3,7 +3,10 @@ import { Container, Row, Col, Button, Form } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
-import { getUsersByRoom, updateUserProfile } from "../../../actions/userActions";
+import {
+  getUsersByRoom,
+  updateUserProfile,
+} from "../../../actions/userActions";
 import { UPDATE_PROFILE_RESET } from "../../../constants/userConstants";
 import toast from "react-hot-toast";
 
@@ -11,13 +14,13 @@ const MeetingFormPage = () => {
   const [meetingId, setMeetingId] = useState("");
   const navigate = useNavigate();
   const dispatch = useDispatch();
- 
-  const { isUpdated } = useSelector((state) => state.updatedUsers);
+
+  const { isUpdated, user } = useSelector((state) => state.updatedUsers);
   const { error, users } = useSelector((state) => state.users);
 
   function GenerateRandomId() {
     const randomUUID = uuidv4();
-    const uuidString = randomUUID.toString()
+    const uuidString = randomUUID.toString();
     return uuidString;
   }
 
@@ -27,28 +30,25 @@ const MeetingFormPage = () => {
     dispatch(updateUserProfile({ roomId: randomId }));
   };
 
-  const handleJoinMeeting = () => {
+  const handleJoinMeeting = async () => {
     if (meetingId) {
-      // Dispatch an action to get users by room
-      dispatch(getUsersByRoom(meetingId))
-        .then(() => {
-          if (users && users.length > 0) {
-            navigate(`/home/${meetingId}`);
-          } else {
-            toast.error("invalid id");
-          }
-        })
-        .catch((error) => {
-          toast.error(error.message);
-        });
-    } else {
-      toast.error("Meeting ID is required.");
+      try {
+        await dispatch(getUsersByRoom(meetingId));
+        if (users && meetingId) {
+          dispatch(updateUserProfile({roomId: meetingId}));
+          navigate(`/home/${meetingId}`);
+        } else {
+          toast.error("Error joining meeting.");
+        }
+      } catch (error) {
+        toast.error("Error joining meeting: " + error.message);
+      }
     }
   };
 
   useEffect(() => {
     if (isUpdated) {
-      navigate(`/home/${randomId}`);
+      navigate(`/home/${user.roomId}`);
       dispatch({
         type: UPDATE_PROFILE_RESET,
       });

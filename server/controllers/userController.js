@@ -1,3 +1,4 @@
+const { isObjectIdOrHexString } = require("mongoose");
 const User = require("../models/userModel");
 const catchAsyncErrors = require("../utils/catchAsyncErrors");
 const ErrorHandler = require("../utils/errorHandler");
@@ -96,6 +97,8 @@ exports.updateUserProfile = catchAsyncErrors(async (req, res, next) => {
       runValidators: true,
     }
   );
+
+  // io.to(roomId).emit('data-updated');
 
   res.status(200).json({
     success: true,
