@@ -40,6 +40,7 @@ const opinions = {
 app.use("/peerjs", ExpressPeerServer(http, opinions));
 
 io.on("connection", (socket) => {
+  console.log(`⚡: ${socket.id} user just connected!`);
   socket.on("join-room", (roomId, userId, userName) => {
     socket.join(roomId);
     setTimeout(() => {
