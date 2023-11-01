@@ -17,224 +17,87 @@ import { Peer } from "peerjs";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
 import { getUsersByRoom } from "../../actions/userActions";
-const socket = socketIO.connect("http://localhost:9000");
+// const socket = socketIO.connect("http://localhost:9000");
+import io from "socket.io-client";
 
 const Home = () => {
-  const dispatch = useDispatch();
   const { roomId } = useParams();
-  const { users } = useSelector((state) => state.users);
   const { user } = useSelector((state) => state.persistedReducer.user);
-
-  const [userIds, setUserIds] = useState([]);
-  const [uniqueId, setUniqueId] = useState(null);
-  console.log(userIds, "userIds");
-  const [showVideo, setShowVideo] = useState(false);
-  const [call, setCall] = useState(false);
-  const [muteAudio, setMuteAudio] = useState(false);
-  const [myVideoStream, setMyVideoStream] = useState(null);
-  const videoRef = useRef(null);
-  const videoGrid = document.getElementById("video-grid");
-  const myVideo = document.createElement("video");
-
-  const myPeer = new Peer({
-    host: "localhost",
-    port: 9000,
-    path: "/peerjs",
-    config: {
-      iceServers: [
-        { url: "stun:stun01.sipphone.com" },
-        { url: "stun:stun.ekiga.net" },
-        { url: "stun:stunserver.org" },
-        { url: "stun:stun.softjoys.com" },
-        { url: "stun:stun.voiparound.com" },
-        { url: "stun:stun.voipbuster.com" },
-        { url: "stun:stun.voipstunt.com" },
-        { url: "stun:stun.voxgratia.org" },
-        { url: "stun:stun.xten.com" },
-        {
-          url: "turn:192.158.29.39:3478?transport=udp",
-          credential: "JZEOEt2V3Qb0y27GRntt2u2PAYA=",
-          username: "28224511:1379330808",
-        },
-        {
-          url: "turn:192.158.29.39:3478?transport=tcp",
-          credential: "JZEOEt2V3Qb0y27GRntt2u2PAYA=",
-          username: "28224511:1379330808",
-        },
-      ],
-    },
-    debug: 3,
-  });
-
-  const addVideoStream1 = (video, stream, id) => {
-    video.srcObject = stream;
-    video.addEventListener("loadedmetadata", () => {
-      video.play();
-      videoGrid.append(video);
-    });
-    setUniqueId(id);
-  };
-
-  const addVideoStream = (video, stream) => {
-    video.srcObject = stream;
-    video.addEventListener("loadedmetadata", () => {
-      video.play();
-      videoGrid.append(video);
-    });
-  };
-
-  const connectToNewUser = (userId, stream) => {
-    console.log("I call someone" + userId);
-    const call = myPeer.call(userId, stream);
-    const video = document.createElement("video");
-    call.on("stream", (userVideoStream) => {
-      addVideoStream(video, userVideoStream);
-    });
-  };
-
-  // const startVideoCall = () => {
-  //   navigator.mediaDevices
-  //     .getUserMedia({ audio: true, video: true })
-  //     .then((stream) => {
-  //       setMyVideoStream(stream);
-  //       addVideoStream(myVideo, stream);
-
-  //       myPeer.on("call", (call) => {
-  //         console.log("someone call me");
-  //         call.answer(stream);
-  //         const video = document.createElement("video");
-  //         call.on("stream", (userVideoStream) => {
-  //           addVideoStream(video, userVideoStream);
-  //         });
-  //       });
-
-  //       socket.on("user-connected", (userId) => {
-  //         console.log(userId, "id")
-  //         connectToNewUser(userId, stream);
-  //       });
-  //       setCall(true);
-  //       setShowVideo(true);
-  //       setMuteAudio(false);
-  //     })
-
-  //     .catch((error) => {
-  //       console.error("Error accessing media devices:", error);
-  //     });
-  // };
-
-  // useEffect(() => {
-  //   const id = user._id;
-  //   if (uniqueId) {
-  //     null;
-  //   } else {
-  //     navigator.mediaDevices
-  //       .getUserMedia({ audio: true, video: true })
-  //       .then((stream) => {
-  //         setMyVideoStream(stream);
-  //         addVideoStream1(myVideo, stream, id);
-
-  //         setCall(true);
-  //         setShowVideo(true);
-  //         setMuteAudio(false);
-  //       })
-
-  //       .catch((error) => {
-  //         console.error("Error accessing media devices:", error);
-  //       });
-  //   }
-  // }, [users]);
-
-  const refresh = () => {
-    // console.log("clicked");
-    // navigator.mediaDevices
-    //   .getUserMedia({ audio: true, video: true })
-    //   .then((stream) => {
-    //     setMyVideoStream(stream);
-    //     myPeer.on("call", (call) => {
-    //       console.log("someone call me");
-    //       call.answer(stream);
-    //       const video = document.createElement("video");
-    //       call.on("stream", (userVideoStream) => {
-    //         addVideoStream(video, userVideoStream);
-    //       });
-    //     });
-    //     socket.on("user-connected", (userId) => {
-    //       console.log(userId, "id");
-    //       connectToNewUser(userId, stream);
-    //     });
-    //   });
-  };
+  const localVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
+  const peerRef = useRef(null);
+  const socketRef = useRef(null);
 
   useEffect(() => {
-    navigator.mediaDevices
-    .getUserMedia({
-      audio: true,
-      video: true,
-    })
-    .then((stream) => {
-      setMyVideoStream(stream)
-      addVideoStream(myVideo, stream);
+    socketRef.current = io("http://localhost:9000");
+    peerRef.current = new Peer({
+      host: "127.0.0.1",
+      port: 9000,
+      path: "/peerjs",
+      debug: 3,
+      config: {
+        iceServers: [
+          { url: "stun:stun01.sipphone.com" },
+          { url: "stun:stun.ekiga.net" },
+          { url: "stun:stunserver.org" },
+          { url: "stun:stun.softjoys.com" },
+          { url: "stun:stun.voiparound.com" },
+          { url: "stun:stun.voipbuster.com" },
+          { url: "stun:stun.voipstunt.com" },
+          { url: "stun:stun.voxgratia.org" },
+          { url: "stun:stun.xten.com" },
+          {
+            url: "turn:192.158.29.39:3478?transport=udp",
+            credential: "JZEOEt2V3Qb0y27GRntt2u2PAYA=",
+            username: "28224511:1379330808",
+          },
+          {
+            url: "turn:192.158.29.39:3478?transport=tcp",
+            credential: "JZEOEt2V3Qb0y27GRntt2u2PAYA=",
+            username: "28224511:1379330808",
+          },
+        ],
+      },
+    });
 
-      myPeer.on("call", (call) => {
-        console.log("someone call me");
-        call.answer(stream);
-        const video = document.createElement("video");
-        call.on("stream", (userVideoStream) => {
-          addVideoStream(video, userVideoStream);
+    navigator.mediaDevices
+      .getUserMedia({
+        audio: true,
+        video: true,
+      })
+      .then((stream) => {
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+        }
+
+        peerRef.current.on("call", (call) => {
+          call.answer(stream);
+          call.on("stream", (userVideoStream) => {
+            if (remoteVideoRef.current) {
+              remoteVideoRef.current.srcObject = userVideoStream;
+            }
+          });
+        });
+
+        socketRef.current.on("user-connected", (userId) => {
+          const call = peerRef.current.call(userId, stream);
+          call.on("stream", (userVideoStream) => {
+            if (remoteVideoRef.current) {
+              remoteVideoRef.current.srcObject = userVideoStream;
+            }
+          });
         });
       });
 
-      socket.on("user-connected", (userId) => {
-        connectToNewUser(userId, stream);
-      });
+    peerRef.current.on("open", (id) => {
+      socketRef.current.emit("join-room", roomId, id, user.firstName);
     });
 
-  }, [user])
-
-
-  // useEffect(() => {
-  //   navigator.mediaDevices
-  //     .getUserMedia({ audio: true, video: true })
-  //     .then((stream) => {
-  //       myPeer.on("call", (call) => {
-  //         console.log("someone call me");
-  //         call.answer(stream);
-  //         const video = document.createElement("video");
-  //         call.on("stream", (userVideoStream) => {
-  //           addVideoStream(video, userVideoStream);
-  //         });
-  //       });
-  //       socket.on("user-connected", (userId) => {
-  //         console.log(userId, "id");
-  //         connectToNewUser(userId, stream);
-  //       });
-  //     })
-
-  //   // return () => {
-  //   //   myPeer.destroy();
-  //   //   socket.disconnect();
-  //   // };
-  // }, [myVideoStream]);
-
-  useEffect(() => {
-    dispatch(getUsersByRoom(roomId));
-  }, [dispatch]);
-
-  useEffect(() => {
-    myPeer.on("open", (id) => {
-      socket.emit("join-room", roomId, id, user.name);
-    });
-  }, [roomId]);
-
-  useEffect(() => {
-    if (users) {
-      const specificId = user._id;
-      const filteredUserIds = users
-        .filter((user) => user._id != specificId)
-        .map((user) => user._id);
-      setUserIds(filteredUserIds);
-    }
-  }, [users]);
+    return () => {
+      socketRef.current.disconnect();
+      peerRef.current.destroy();
+    };
+  }, []);
 
   const toggleVideo = async () => {
     const enabled = myVideoStream.getVideoTracks()[0].enabled;
@@ -274,11 +137,15 @@ const Home = () => {
       <div className="main">
         <div className="main__left">
           <div className="videos__group">
-            <div ref={videoRef} id="video-grid"></div>
-            <div ref={videoRef} id="video-grid"></div>
+            {/* <div ref={videoRef} id="video-grid"></div> */}
+
+            <div id="video-grid">
+              <video ref={localVideoRef} autoPlay muted />
+              <video ref={remoteVideoRef} autoPlay />
+            </div>
           </div>
           <div className="options">
-            <div className="options__left">
+            {/* <div className="options__left">
               {showVideo ? (
                 <div id="stopVideo" className="options__button">
                   <FontAwesomeIcon icon={faVideoCamera} onClick={toggleVideo} />
@@ -310,7 +177,7 @@ const Home = () => {
               <div id="inviteButton3" className="options__button">
                 <FontAwesomeIcon icon={faRefresh} onClick={refresh} />
               </div>
-            </div>
+            </div> */}
             {/*  {call ? null : (
               <div className="options__right" style={{ marginLeft: "7px" }}>
                 <div id="inviteButton2" className="options__button">
