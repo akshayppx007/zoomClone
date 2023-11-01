@@ -24,9 +24,14 @@ const Home = () => {
   const { roomId } = useParams();
   const { user } = useSelector((state) => state.persistedReducer.user);
   const localVideoRef = useRef(null);
-  const remoteVideoRef = useRef(null);
+  const remoteVideoRef = useRef();
   const peerRef = useRef(null);
   const socketRef = useRef(null);
+  const [myVideoStream, setMyVideoStream] = useState(null);
+  const [showVideo, setShowVideo] = useState(true);
+  const [muteAudio, setMuteAudio] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState("");
 
   useEffect(() => {
     socketRef.current = io("http://localhost:9000");
@@ -66,6 +71,7 @@ const Home = () => {
         video: true,
       })
       .then((stream) => {
+        setMyVideoStream(stream);
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
         }
@@ -88,6 +94,10 @@ const Home = () => {
           });
         });
       });
+
+    socketRef.current.on("createMessage", (message, userName) => {
+      setMessages((prevMessages) => [...prevMessages, { message, userName }]);
+    });
 
     peerRef.current.on("open", (id) => {
       socketRef.current.emit("join-room", roomId, id, user.firstName);
@@ -127,6 +137,14 @@ const Home = () => {
     }
   };
 
+  const sendMessage = (e) => {
+    e.preventDefault();
+    if (newMessage !== "") {
+      socketRef.current.emit("message", newMessage);
+      setNewMessage("");
+    }
+  };
+
   return (
     <div>
       <div className="header">
@@ -140,12 +158,12 @@ const Home = () => {
             {/* <div ref={videoRef} id="video-grid"></div> */}
 
             <div id="video-grid">
-              <video ref={localVideoRef} autoPlay muted />
+              <video ref={localVideoRef} autoPlay />
               <video ref={remoteVideoRef} autoPlay />
             </div>
           </div>
           <div className="options">
-            {/* <div className="options__left">
+            <div className="options__left">
               {showVideo ? (
                 <div id="stopVideo" className="options__button">
                   <FontAwesomeIcon icon={faVideoCamera} onClick={toggleVideo} />
@@ -173,11 +191,6 @@ const Home = () => {
                 <FontAwesomeIcon icon={faUserPlus} onClick={copyLink} />
               </div>
             </div>
-            <div className="options__right" style={{ marginLeft: "7px" }}>
-              <div id="inviteButton3" className="options__button">
-                <FontAwesomeIcon icon={faRefresh} onClick={refresh} />
-              </div>
-            </div> */}
             {/*  {call ? null : (
               <div className="options__right" style={{ marginLeft: "7px" }}>
                 <div id="inviteButton2" className="options__button">
@@ -189,17 +202,25 @@ const Home = () => {
         </div>
         <div className="main__right">
           <div className="main__chat_window">
-            <div className="messages"></div>
+            <div className="messages">
+              {messages.map((messageObj, index) => (
+                <p key={index} style={{color: "#706233"}}>
+                  <strong>{messageObj.userName}</strong>: {messageObj.message}
+                </p>
+              ))}
+            </div>
           </div>
           <div className="main__message_container">
             <input
               id="chat_message"
               type="text"
               autoComplete="off"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
               placeholder="Type message here..."
             />
             <div id="send" className="options__button">
-              <FontAwesomeIcon icon={faPaperPlane} />
+              <FontAwesomeIcon icon={faPaperPlane} onClick={sendMessage} />
             </div>
           </div>
         </div>
